@@ -45,4 +45,25 @@ Rectangle {
             anchors.centerIn: parent
         }
     }
+
+    Rectangle {
+        id: playButton
+        anchors.left: recordButton.right
+        width: 100
+        height: 100
+        color: "blue"
+        border.color: "black"
+        border.width: 5
+        radius: 20
+        MouseArea {
+            anchors.fill: parent
+            onClicked: {
+                myObject.play()
+            }
+        }
+        Text {
+            text: "Play"
+            anchors.centerIn: parent
+        }
+    }
 }

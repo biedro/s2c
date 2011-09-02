@@ -3,7 +3,7 @@ folder_01.source = qml/demo_speech
 folder_01.target = qml
 DEPLOYMENTFOLDERS = folder_01
 
-QT+=network multimedia
+QT+=network multimedia phonon script
 
 # Additional import path used to resolve QML modules in Creator's code model
 QML_IMPORT_PATH =
@@ -27,7 +27,8 @@ symbian:TARGET.CAPABILITY += NetworkServices
 
 # The .cpp file which was generated for your project. Feel free to hack it.
 SOURCES += main.cpp \
-    myengine.cpp
+    myengine.cpp \
+    replayspeech.cpp
 
 # Please do not modify the following two lines. Required for deployment.
 include(qmlapplicationviewer/qmlapplicationviewer.pri)
@@ -35,7 +36,8 @@ qtcAddDeployment()
 
 HEADERS += \
     myengine.h \
-    external/sndfile.h
+    external/sndfile.h \
+    replayspeech.h
 
 LIBS += \
     -L"$$_PRO_FILE_PWD_/external/" -llibsndfile-1

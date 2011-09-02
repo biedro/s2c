@@ -37,6 +37,7 @@ public:
     virtual ~MyEngine();
     Q_INVOKABLE void sendGoogleReq(const QString &msg);
     Q_INVOKABLE void recordVoice();
+    Q_INVOKABLE void play();
     void convertToFlac();
 
 signals:
@@ -48,6 +49,7 @@ public slots:
     void stateChanged(QAudio::State newState);
 
 private:
+    QString parseReply(const QByteArray& response_body);
     QFile outputFile;
     QAudioInput* audio;
     QAudioFormat format;

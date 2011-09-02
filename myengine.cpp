@@ -27,16 +27,27 @@
 #include <QFileInfo>
 #include <QTimer>
 
+#include <QtScript>
+
 #include <stdio.h>
 #include <stdlib.h>
 
 #include "myengine.h"
 #include "external/sndfile.h"
 
+#include <phonon>
+
+
+const char* const kHypothesesStr = "hypotheses";
+const char* const kUtteranceStr = "utterance";
+const char* const kConfidenceStr = "confidence";
 
 MyEngine::MyEngine(QObject *parent) :
     QObject(parent)
 {
+    //not to record it every time :)
+    flacFilePath = QString("C:/Users/marcin.biedron/demo_speech-build-desktop/test.flac");
+
     // set up the format you want, eg.
     format.setFrequency(8000);
     format.setChannels(1);
@@ -52,7 +63,6 @@ MyEngine::MyEngine(QObject *parent) :
     sfinfo_out->frames = 0;  //?
     sfinfo_out->samplerate = 8000;
     sfinfo_out->channels = 1;
-    //sfinfo_out->format = SF_FORMAT_FLAC | SF_FORMAT_PCM_S8;
     sfinfo_out->format = SF_FORMAT_FLAC | SF_FORMAT_PCM_16;
     sfinfo_out->sections = 0;//?
     sfinfo_out->seekable = 0;//?
@@ -83,6 +93,7 @@ void MyEngine::sendGoogleReq(const QString &msg) {
 
     //req.setHeader(QNetworkRequest::ContentTypeHeader, "");
     //open audio file to send
+    qDebug() << "Sending file: " << flacFilePath;
     QFile file(flacFilePath);
     if (file.exists()) {
         file.open(QIODevice::ReadOnly)?qDebug() << "file opened: " << flacFilePath:qCritical() << "file open error: " << flacFilePath;
@@ -117,9 +128,50 @@ void MyEngine::recordVoice() {
     connect(audio, SIGNAL(stateChanged(QAudio::State)),
             this, SLOT(stateChanged(QAudio::State)));
 
-    QTimer::singleShot(3000, this, SLOT(stopRecording())); // Records audio for 3 sec
+    QTimer::singleShot(2000, this, SLOT(stopRecording())); // Records audio for 2 sec
     audio->start(&outputFile);
 
+}
+
+void MyEngine::play() {
+    qDebug() << "> Play()";
+    //// move to different class
+    //Phonon::MediaObject *music =
+    //        Phonon::createPlayer(Phonon::MusicCategory,
+     //                            Phonon::MediaSource("/path/mysong.mp3"));
+    //music->play();
+
+    QByteArray response_body("\"{\"status\":0,\"id\":\"debc3120d3cfe2e60fc43505b184883c-1\",\"hypotheses\":[{\"utterance\":\"system\",\"confidence\":0.6186791}]}");
+
+
+    if (response_body.count() == 0) {
+        qDebug() << "Response was empty.";
+    }
+    qDebug() << "Parsing response " << response_body;
+
+    // Parse the response, ignoring comments.
+
+
+    QScriptValue sc;
+    QScriptEngine engine;
+    sc = engine.evaluate(QString(response_body)); // In new versions it may need to look like engine.evaluate("(" + QString(result) + ")");
+
+    if (sc.property(kHypothesesStr).isArray())
+    {
+        qDebug() << "jestem w domu";
+
+        QStringList items;
+        qScriptValueToSequence(sc.property(kHypothesesStr), items);
+
+        foreach (QString str, items) {
+            qDebug("value %s",str.toStdString().c_str());
+        }
+
+    } else {
+        qDebug() << "fail";
+    }
+
+    qDebug() << "< Play()";
 }
 
 void MyEngine::stopRecording()
@@ -207,7 +259,7 @@ void MyEngine::convertToFlac()
     sf_close(sf_file_out);
 
     // check if it opens correctly
-/*
+    /*
     SF_INFO sfinfo_chk;
     sf_format_check(&sfinfo_chk)?qDebug() << "sfinfo_in is valid":qDebug() << "sfinfo_in is invalid";
     SNDFILE*  sf_file_chk;
@@ -253,10 +305,113 @@ void MyEngine::cppSlot(int number) {
 }
 
 void MyEngine::replyFinished(QNetworkReply* reply) {
-    QByteArray response = reply->readAll();
+    //
     qDebug() << "Called replayFinished slot";
     reply->error()==QNetworkReply::NoError?qDebug() << "Error nr" << reply->error() : qDebug() << "no errors";
-    qDebug() << "response:";
-    qDebug() << response.data();
+    QByteArray response = reply->readAll();
+    parseReply(response); //
     reply->deleteLater();
+}
+
+
+QString MyEngine::parseReply(const QByteArray& response_body) {
+    //looking for example pattern:
+    //Error nr 0
+    //response:
+    //{"status":0,"id":"421d36084c097778b2f81d60caef6d99-1","hypotheses":[{"utterance":"system","confidence":0.6186791}]}
+
+    if (response_body.count() == 0) {
+        qDebug() << "Response was empty.";
+        return QString();
+    }
+    qDebug() << "Parsing response " << response_body;
+
+    // Parse the response, ignoring comments.
+
+
+    QScriptValue sc;
+    QScriptEngine engine;
+    sc = engine.evaluate(QString(response_body)); // In new versions it may need to look like engine.evaluate("(" + QString(result) + ")");
+
+    if (sc.property("kHypothesesStr").isArray())
+    {
+
+        QStringList items;
+        qScriptValueToSequence(sc.property("response"), items);
+
+        foreach (QString str, items) {
+            qDebug("value %s",str.toStdString().c_str());
+        }
+
+    } else {
+        qDebug() << "fail";
+    }
+
+    //    std::string error_msg;
+    //    scoped_ptr<Value> response_value(base::JSONReader::ReadAndReturnError(
+    //                                         response, false, NULL, &error_msg));
+    //    if (response_value == NULL) {
+    //        LOG(WARNING) << "ParseServerResponse: JSONReader failed : " << error_msg;
+    //        return false;
+    //    }
+
+    //    if (!response_value->IsType(Value::TYPE_DICTIONARY)) {
+    //        VLOG(1) << "ParseServerResponse: Unexpected response type "
+    //                << response_value->GetType();
+    //        return false;
+    //    }
+    //    const DictionaryValue* response_object =
+    //            static_cast<DictionaryValue*>(response_value.get());
+
+    //    // Get the hypotheses
+    //    Value* hypotheses_value = NULL;
+    //    if (!response_object->Get(kHypothesesString, &hypotheses_value)) {
+    //        VLOG(1) << "ParseServerResponse: Missing hypotheses attribute.";
+    //        return false;
+    //    }
+    //    DCHECK(hypotheses_value);
+    //    if (!hypotheses_value->IsType(Value::TYPE_LIST)) {
+    //        VLOG(1) << "ParseServerResponse: Unexpected hypotheses type "
+    //                << hypotheses_value->GetType();
+    //        return false;
+    //    }
+    //    const ListValue* hypotheses_list = static_cast<ListValue*>(hypotheses_value);
+
+    //    size_t index = 0;
+    //    for (; index < hypotheses_list->GetSize(); ++index) {
+    //        Value* hypothesis = NULL;
+    //        if (!hypotheses_list->Get(index, &hypothesis)) {
+    //            LOG(WARNING) << "ParseServerResponse: Unable to read hypothesis value.";
+    //            break;
+    //        }
+    //        DCHECK(hypothesis);
+    //        if (!hypothesis->IsType(Value::TYPE_DICTIONARY)) {
+    //            LOG(WARNING) << "ParseServerResponse: Unexpected value type "
+    //                         << hypothesis->GetType();
+    //            break;
+    //        }
+
+    //        const DictionaryValue* hypothesis_value =
+    //                static_cast<DictionaryValue*>(hypothesis);
+    //        string16 utterance;
+    //        if (!hypothesis_value->GetString(kUtteranceString, &utterance)) {
+    //            LOG(WARNING) << "ParseServerResponse: Missing utterance value.";
+    //            break;
+    //        }
+
+    //        // It is not an error if the 'confidence' field is missing.
+    //        double confidence = 0.0;
+    //        hypothesis_value->GetDouble(kConfidenceString, &confidence);
+
+    //        result->push_back(speech_input::SpeechInputResultItem(utterance,
+    //                                                              confidence));
+    //    }
+
+    //    if (index < hypotheses_list->GetSize()) {
+    //        result->clear();
+    //        return false;
+    //    }
+
+    //    return true;
+    return QString();
 }
