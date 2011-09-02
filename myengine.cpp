@@ -151,10 +151,15 @@ void MyEngine::play() {
 
     // Parse the response, ignoring comments.
 
-
     QScriptValue sc;
     QScriptEngine engine;
     sc = engine.evaluate(QString(response_body)); // In new versions it may need to look like engine.evaluate("(" + QString(result) + ")");
+
+    //{"status":0,"id":"421d36084c097778b2f81d60caef6d99-1","hypotheses":[{"utterance":"system","confidence":0.6186791}]}
+
+    qDebug() << kHypothesesStr << " -> " << sc.property(kHypothesesStr).toString();
+    qDebug() << kUtteranceStr << " -> " << sc.property(kUtteranceStr).toString();
+    qDebug() << kConfidenceStr << " -> " << sc.property(kConfidenceStr).toString();
 
     if (sc.property(kHypothesesStr).isArray())
     {
